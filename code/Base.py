@@ -7,6 +7,7 @@ import numpy as np
 import nibabel as nib
 import pandas as pd
 
+
 #% Base class features
 #%      -> load any type of medical image using nibabel
 #%      -> print info about data 
@@ -29,6 +30,9 @@ class Base:
 			self.patchY = None
 			self.patchZ = None
 			self.step = None
+			self.stepX = None
+			self.stepY = None
+			self.stepZ = None
 			self.fileLoaded = False
 			self.patchesFormed = False
 			self.count = 0
@@ -49,6 +53,9 @@ class Base:
 			self.patchY = file['patches'][0][0].shape[0]
 			self.patchZ = file['patches'][0][0].shape[0]
 			self.step = file['step'][0]
+			self.stepX = file['stepX'][0]
+			self.stepY = file['stepY'][0]
+			self.stepZ = file['stepZ'][0]
 			self.fileLoaded = False 
 			self.patchesFormed = True
 			self.count = 0
@@ -102,16 +109,21 @@ class Base:
 		y = Y/2
 		z = Z/2
 
+		#find pad in each direction
+		padX = (stepX -(self.img.shape[0])%stepX) if (self.img.shape[0])%stepX else 0
+		padY = (stepY -(self.img.shape[1])%stepY) if (self.img.shape[1])%stepY else 0
+		padZ = (stepZ -(self.img.shape[2])%stepZ) if (self.img.shape[2])%stepZ else 0
+
 		# zero padding         
-		self.img = np.concatenate((self.img, np.zeros(( (self.img.shape[0] - 2*(X/2))%stepX, self.img.shape[1], self.img.shape[2]) ) ), axis=0)
-		self.img = np.concatenate((self.img, np.zeros(( self.img.shape[0], (self.img.shape[1] - 2*(Y/2))%stepY, self.img.shape[2]) ) ), axis=1)
-		self.img = np.concatenate((self.img, np.zeros(( self.img.shape[0], self.img.shape[1], (self.img.shape[2] -2*(Z/2))%stepZ ) ) ), axis=2)
+		self.img = np.concatenate((self.img, np.zeros(( padX, self.img.shape[1], self.img.shape[2]) ) ), axis=0)
+		self.img = np.concatenate((self.img, np.zeros(( self.img.shape[0], padY, self.img.shape[2]) ) ), axis=1)
+		self.img = np.concatenate((self.img, np.zeros(( self.img.shape[0], self.img.shape[1], padZ) ) ), axis=2)
 
 		imgShape = self.getImgShape()
 		for x in range(X/2, imgShape[0] - X/2 , stepX):
 			for y in range(Y/2, imgShape[1] - Y/2 , stepY):
-				for z in range(Z/2, imgShape[2] - Z/2, stepZ ):
-					self.index2patch[i] = self.img[x - X/2: x + X/2 + 1, y - Y/2: y + Y/2 + 1, z - Z/2: z + Z/2 + 1]
+				for z in range(Z/2, imgShape[2] - Z/2, stepZ):
+					self.index2patch[i] = self.img[x - X/2: x + X/2 + 1 , y - Y/2: y + Y/2 + 1, z - Z/2: z + Z/2  + 1]
 					i = i + 1
 
 		self.patchesFormed = True
@@ -140,18 +152,54 @@ class Base:
 			ptch['imgShape'] = [self.getImgShape()]
 			ptch['patches'] = [self.index2patch]
 			ptch['step'] = [self.step]
+			ptch['stepX'] = [self.stepX]
+			ptch['stepY'] = [self.stepY]
+			ptch['stepZ'] = [self.stepZ]
 			df = pd.DataFrame(ptch)
 			df.to_hdf(fileName, 'patches', overwrite = True)
 			self.patchFile = fileName
 			# save them to hdf5 file 
 
 	def patches_to_image(self):
-		if patchesFormed:
-			pass
+		# convert to image blocks
+		if self.patchesFormed:
+			imgShape = self.getImgShape()
+			print("imgShape", imgShape)
+			X = imgShape[0]/self.patchX
+			Y = imgShape[1]/self.patchY	
+			Z = imgShape[2]/self.patchZ
+			i = 0
+			tCub = np.zeros((0, imgShape[1], imgShape[2]))
+			
+			for x in range(X):
+				tPln = np.zeros((self.patchX, 0, imgShape[2]))
+				for y in range(Y):
+					tCol = np.zeros((self.patchX, self.patchY, 0))
+					for z in range(Z):
+						tCol = np.concatenate((tCol, self.index2patch[i]), axis = 2)
+						i = i+1
+					tPln = np.concatenate((tPln, tCol), axis=1)
+				print("tPln",tPln.shape)
+				tCub = np.concatenate((tCub, tPln), axis=0)
+			
+			self.img = tCub
 		else:
 			print("No patches formed")
 
 	
 	
 
+
+# test the class here
+
+if __name__ == '__main__':
+	trainx = Base(imgaddr = "../data/train/t1_icbm_normal_1mm_pn5_rf0.mnc.gz") 
+	sindex = 50 # starting images are just 
+	trainx.img = trainx.img[:, :, sindex: sindex + 5][:, :, ::2]
+	x = 31
+	y = 31
+	z = 1
+	Step = 31
+	trainx.splitimage(X = x, Y = y, Z = z, step = Step, stepZ = 1)
+	trainx.patches_to_image()
 
