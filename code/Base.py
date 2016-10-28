@@ -29,7 +29,7 @@ class Base:
 			self.patchX = None
 			self.patchY = None
 			self.patchZ = None
-			self.step = None
+			# self.step = None
 			self.stepX = None
 			self.stepY = None
 			self.stepZ = None
@@ -52,7 +52,7 @@ class Base:
 			self.patchX = file['patches'][0][0].shape[0]
 			self.patchY = file['patches'][0][0].shape[0]
 			self.patchZ = file['patches'][0][0].shape[0]
-			self.step = file['step'][0]
+			# self.step = file['step'][0]
 			self.stepX = file['stepX'][0]
 			self.stepY = file['stepY'][0]
 			self.stepZ = file['stepZ'][0]
@@ -77,7 +77,7 @@ class Base:
 		pass
 		
 	
-	def splitimage(self, X = 3, Y = 5, Z = 3, step = 1, stepX = None, stepY = None, stepZ = None):
+	def splitimage(self, X = 3, Y = 5, Z = 3):
 
 		self.index2patch = {}
 		# change index 2 patch here
@@ -93,11 +93,20 @@ class Base:
 		self.patchX = X
 		self.patchY = Y
 		self.patchZ = Z
-		self.step = step
-		# x y z must be odd
-		stepX  = stepX if stepX else step
-		stepY  = stepY if stepY else step
-		stepZ  = stepZ if stepZ else step
+		# self.step = step
+		# # x y z must be odd
+		# stepX  = stepX if stepX else step
+		# stepY  = stepY if stepY else step
+		# stepZ  = stepZ if stepZ else 
+		self.stepX  = X
+		self.stepY  = Y
+		self.stepZ  = Z
+
+		stepX  = X
+		stepY  = Y
+		stepZ  = Z
+
+
 		# now iterate over image to generate patches 
 		# check 
 		if len( self.img.shape ) == 2: # 2d image
@@ -151,7 +160,7 @@ class Base:
 			ptch['imgAddr'] = [self.imgAddr]
 			ptch['imgShape'] = [self.getImgShape()]
 			ptch['patches'] = [self.index2patch]
-			ptch['step'] = [self.step]
+			#ptch['step'] = [self.step]
 			ptch['stepX'] = [self.stepX]
 			ptch['stepY'] = [self.stepY]
 			ptch['stepZ'] = [self.stepZ]
@@ -164,7 +173,7 @@ class Base:
 		# convert to image blocks
 		if self.patchesFormed:
 			imgShape = self.getImgShape()
-			print("imgShape", imgShape)
+			# print("imgShape", imgShape)
 			X = imgShape[0]/self.patchX
 			Y = imgShape[1]/self.patchY	
 			Z = imgShape[2]/self.patchZ
@@ -179,7 +188,7 @@ class Base:
 						tCol = np.concatenate((tCol, self.index2patch[i]), axis = 2)
 						i = i+1
 					tPln = np.concatenate((tPln, tCol), axis=1)
-				print("tPln",tPln.shape)
+				# print("tPln",tPln.shape)
 				tCub = np.concatenate((tCub, tPln), axis=0)
 			
 			self.img = tCub
@@ -200,6 +209,6 @@ if __name__ == '__main__':
 	y = 31
 	z = 1
 	Step = 31
-	trainx.splitimage(X = x, Y = y, Z = z, step = Step, stepZ = 1)
+	trainx.splitimage(X = x, Y = y, Z = z)
 	trainx.patches_to_image()
 
